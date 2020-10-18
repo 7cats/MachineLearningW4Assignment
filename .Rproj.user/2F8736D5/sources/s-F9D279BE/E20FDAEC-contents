@@ -1,0 +1,136 @@
+---
+title: "Code"
+author: "Zixin"
+date: "08/10/2020"
+output: html_document
+---
+<style type="text/css">
+
+h1,h4{
+text-align: center
+}
+</style>
+
+
+##### **Objectives of analysis**
+This is report of the assignment of course Practical Machine Learning. The aim of this report is to build a model that could classify which motion a test subject was doing.
+
+##### **Introduction of the dataset**
+The data is obtained from http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har.
+Training and testing data set are grouped beforehand.
+
+##### **Executive summary**
+First the useful variables are selected. And training data are applied to three algorithms(Random Forest, Decision Tree and Naive Bayes) with k-fold cross-validation where k was taken as 3. The model with the best accuracy is chosen to build the final model, which predicts the result based on the three cross-validation models' prediction using Random Forest. The processes follow this way:  
+(1) Training data is supplied with a 3-fold cross-validation using Random Forest(**RT**), Decision Tree(**DT**) and Naive Bayes(**NB**) separately.  
+(2) Accuracy of three algorithms are calculated and best one is selected. Assume **A** algorithm performs the best and it has three **A**models.
+(3) Three **A** models of the 3-fold cross validation are used to predict the whole training dataset.  
+(4) These three predictions form a new training dataset to train a new model with **A** algorithm.  
+(5) Testing dataset are predicted with the three **A** models and the three prediction results are again supplied to the new model to get the final prediction.  
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+    echo = TRUE,
+    warning = FALSE,
+    message = FALSE,
+    cache = TRUE,
+    fig.align = "center")
+
+library(dplyr)
+library(caret)
+library(knitr)
+library(kableExtra)
+
+```
+#### Loading data
+```{r}
+training <- read.csv("pml-training.csv")
+testing <- read.csv("pml-testing.csv")
+```
+#### Cleaning data and selecting useful variables
+```{r}
+checkNullNa <-  function(x)
+{
+    if(sum(x == '' | is.na(x) | is.null(x)) > 0)
+        FALSE
+    else
+        TRUE
+}
+
+selectVar <- apply(training, MARGIN = 2, checkNullNa)
+training <- training[selectVar]
+testing <- testing[selectVar]
+# deleting the date column
+training <- training[,-c(1:7)]
+# deleting the date column and ID column of testing data
+testing <- testing[,-c(1:7,dim(testing)[2])]  
+training$classe <- as.factor(training$classe) # making the classe column as factor
+```
+#### Training 3-fold cross-validation and selecting the best algorithm based on accuracy
+```{r}
+# creating folds
+set.seed(125)
+trainModel <- function(fold, algo) # algo is algorithm
+{
+    if (algo != 'rf' && algo != 'nb' && algo != 'rpart')
+        stop('input algorithm name is not a chosen one! Choose from rf, gbm or nb.')
+    
+    ktraining <- training[-fold,]
+    ktesting <- training[fold,]
+    fit <- train(classe ~ .,data = ktraining, method = algo) # training model
+    kpred <- predict(fit, ktesting)
+    confMatrx <- confusionMatrix(table(kpred, ktesting$classe)) # confusion table
+    kModelFit <- list(fit, kpred, confMatrx) # return model, prediction and accuracy
+    return(kModelFit)
+}
+
+kFolds <- createFolds(training$class, k = 3) # create 3 folds of data
+kFitRF <- lapply(kFolds, function(x) trainModel(x, algo = 'rf'))
+kFitNB <- lapply(kFolds, function(x) trainModel(x, algo = 'nb'))
+kFitDT <- lapply(kFolds, function(x) trainModel(x, algo = 'rpart'))
+
+## getting the accuracy of each algorithmS
+accuRF <- sapply(c(1:3), function(x) kFitRF[[x]][[3]]$overall[1])
+accuNB <- sapply(c(1:3), function(x) kFitNB[[x]][[3]]$overall[1]) 
+accuDT <- sapply(c(1:3), function(x) kFitDT[[x]][[3]]$overall[1])
+
+accuMatrx <- data.frame(RF = mean(accuRF), NB = mean(accuNB), DT = mean(accuDT))
+accuMaxName <- colnames(accuMatrx[which(accuMatrx == max(accuMatrx))])
+```
+The best algorithm is `r accuMaxName` and the accuracy is `r max(accuMatrx)`. As we can see that the averaged accuracy is pretty high. Hence in the next step models of **Random Forest** are used to trained the final model. All averaged accuracies of three models tested in cross-validation stage are presented in the following table. 
+
+```{r}
+accuMatrx %>%
+ kbl(caption = 'Average accuracy of three algorithms') %>%
+     kable_styling(position = 'center',full_width = F, bootstrap_options = 'condensed')
+```
+
+#### Training new Random Forest model based on three predictions given from 3-fold cross-validation by Random Forest.
+```{r}
+fitRF1 <- kFitRF[[1]][[1]] # getting models from cross-validation
+fitRF2 <- kFitRF[[2]][[1]]
+fitRF3 <- kFitRF[[3]][[1]]
+
+predTrainRF <- data.frame( # using three models to predict whole training data
+    k1 = predict(fitRF1, training), 
+    k2 = predict(fitRF2, training), 
+    k3 = predict(fitRF3, training),
+    realData = training$classe) # real training data for training
+
+# Training final model with three predictions from cross-validations
+fitRF <- train(realData ~ ., data = predTrainRF, method = 'rf') 
+trainPred <- predict(fitRF, predTrainRF)
+trainCF <- confusionMatrix(table(trainPred, training$classe))
+
+# Testing data supplied to three cross-validation model
+predTestRF <- data.frame(
+    k1 = predict(fitRF1, testing), 
+    k2 = predict(fitRF2, testing), 
+    k3 = predict(fitRF3, testing) )
+
+# The final prediction result of the testing datasets
+predFinal <- predict(fitRF, predTestRF)
+```
+The accuracy of the final model is `r round(trainCF$overall[1],3)`. As we can see that the accuracy is extremely high which might be a sign of over-fitting. However the model's prediction of the testing data reaches a 100% accuracy, therefore this model is very successful.
+
+#### Conclusion
+In this project we test three algorithm on a motion dataset to predict which motion a subject is doing. The **Random Forest** model shows the best performance whose accuracy reaches `r max(accuMatrx)`. Another **Random Forest** model is constructed using models from cross-validation stages. The final model shows an extraordinary performance with a 100% accuracy. Although it is worth to point out that **Random Forest** model does take the longest time to train.

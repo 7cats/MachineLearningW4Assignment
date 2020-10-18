@@ -1,0 +1,23 @@
+{
+    "id": "78786227",
+    "path": null,
+    "project_path": null,
+    "type": "r_code_browser",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1602964335210.0,
+    "source_on_save": false,
+    "relative_order": 4,
+    "properties": {
+        "context": ".GlobalEnv:::testfun"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 4189021006120823933,
+    "encoding": "",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1602964335210,
+    "read_only": false,
+    "read_only_alternatives": []
+}

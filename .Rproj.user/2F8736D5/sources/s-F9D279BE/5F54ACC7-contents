@@ -1,0 +1,21 @@
+---
+title: "Code"
+author: "Zixin"
+date: "08/10/2020"
+output: html_document
+---
+##### **Objectives of analysis**
+This is report of the assignment of course Practical Machine Learning. The aim of this report is to build a model that could classify which motion a test subject was doing.
+
+##### **Introduction of the dataset**
+The data is obtained from http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har.
+Training and testing data set are grouped beforehand.
+
+##### **Executive summary**
+First the useful variables are selected. And training data are applied to three algorithms(Random Forest, Decision Tree and Naive Bayes) with k-fold cross-validation where k was taken as 3. The model with the best accuracy is chosen to build the final model, which predicts the result based on the three cross-validation models' prediction using Random Forest. The processes follow this way:  
+(1) Training data is supplied with a 3-fold cross-validation using Random Forest, Decision Tree and Naive Bayes seperately.  
+(2) Accuracy of three algorithms are calculated and best one is selected. Assume **A** algorithm performs the best and it has three **A**models.  
+(3) Three **A** models of the 3-fold cross validation are used to predict the whole training dataset.  
+(4) These three predictions form a new training dataset to train a new model with **A** algorithm.  
+(5) Testing dataset are predicted with the three **A** models and the three prediction results are agained supplied to the new model to get the final prediction.  
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
